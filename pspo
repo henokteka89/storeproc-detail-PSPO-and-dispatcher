@@ -1,0 +1,64 @@
+USE stackoverflow2010;
+GO
+
+-- Dispatcher plan(s) directly attached to the procedure's object_id
+SELECT
+    q.query_id,
+    q.object_id,
+    p.plan_id,
+    p.count_compiles,
+    p.last_execution_time,
+    qt.query_sql_text
+FROM sys.query_store_query AS q
+JOIN sys.query_store_query_text AS qt
+    ON qt.query_text_id = q.query_text_id
+JOIN sys.query_store_plan AS p
+    ON p.query_id = q.query_id
+WHERE q.object_id = OBJECT_ID('dbo.usp_QS_Test_PostsByUser')
+ORDER BY p.plan_id;
+GO
+
+-- PSP variant plans (object_id = 0, text references the proc's ObjectID via PLAN PER VALUE)
+SELECT
+    q.query_id,
+    q.object_id,
+    p.plan_id,
+    p.count_compiles,
+    p.last_execution_time,
+    qt.query_sql_text
+FROM sys.query_store_query AS q
+JOIN sys.query_store_query_text AS qt
+    ON qt.query_text_id = q.query_text_id
+JOIN sys.query_store_plan AS p
+    ON p.query_id = q.query_id
+WHERE q.object_id = 0
+  AND qt.query_sql_text LIKE '%ObjectID = ' + CAST(OBJECT_ID('dbo.usp_QS_Test_PostsByUser') AS VARCHAR(20)) + '%'
+ORDER BY p.plan_id;
+GO
+
+-- Runtime stats per plan (execution counts, avg duration, avg CPU, avg logical reads)
+SELECT
+    q.query_id,
+    p.plan_id,
+    rs.execution_type_desc,
+    rs.count_executions,
+    rs.avg_duration,
+    rs.avg_cpu_time,
+    rs.avg_logical_io_reads,
+    rs.last_execution_time
+FROM sys.query_store_query AS q
+JOIN sys.query_store_plan AS p
+    ON p.query_id = q.query_id
+JOIN sys.query_store_runtime_stats AS rs
+    ON rs.plan_id = p.plan_id
+WHERE q.object_id = OBJECT_ID('dbo.usp_QS_Test_PostsByUser')
+   OR p.query_id IN (
+        SELECT q2.query_id
+        FROM sys.query_store_query AS q2
+        JOIN sys.query_store_query_text AS qt2
+            ON qt2.query_text_id = q2.query_text_id
+        WHERE q2.object_id = 0
+          AND qt2.query_sql_text LIKE '%ObjectID = ' + CAST(OBJECT_ID('dbo.usp_QS_Test_PostsByUser') AS VARCHAR(20)) + '%'
+   )
+ORDER BY p.plan_id, rs.last_execution_time DESC;
+GO
