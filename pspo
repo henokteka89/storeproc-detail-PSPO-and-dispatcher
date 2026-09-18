@@ -37,6 +37,26 @@ JOIN sys.query_store_plan AS p
 WHERE q.object_id = OBJECT_ID('dbo.usp_QS_Test_PostsByUser')
 ORDER BY qv.query_variant_query_id, p.plan_id;
 GO
+or detail like cpu time
+SELECT
+    qv.query_variant_query_id,
+    p.plan_id AS variant_plan_id,
+    SUM(rs.count_executions) AS total_executions,
+    SUM(rs.count_executions * rs.avg_duration) / NULLIF(SUM(rs.count_executions), 0) AS weighted_avg_duration,
+    SUM(rs.count_executions * rs.avg_cpu_time) / NULLIF(SUM(rs.count_executions), 0) AS weighted_avg_cpu_time,
+    MAX(rs.last_execution_time) AS last_execution_time
+FROM sys.query_store_query AS q
+JOIN sys.query_store_query_variant AS qv
+    ON qv.parent_query_id = q.query_id
+JOIN sys.query_store_plan AS p
+    ON p.query_id = qv.query_variant_query_id
+JOIN sys.query_store_runtime_stats AS rs
+    ON rs.plan_id = p.plan_id
+WHERE q.object_id = OBJECT_ID('dbo.usp_QS_Test_PostsByUser')
+  AND rs.execution_type_desc = 'Regular'
+GROUP BY qv.query_variant_query_id, p.plan_id
+ORDER BY total_executions DESC;
+GO
 
 -- PSP variant plans (object_id = 0, text references the proc's ObjectID via PLAN PER VALUE)
 SELECT
