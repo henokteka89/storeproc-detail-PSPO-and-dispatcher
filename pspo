@@ -18,6 +18,26 @@ WHERE q.object_id = OBJECT_ID('dbo.usp_QS_Test_PostsByUser')
 ORDER BY p.plan_id;
 GO
 
+EASIETS
+USE stackoverflow2010;
+GO
+
+SELECT
+    qv.parent_query_id,
+    qv.dispatcher_plan_id,
+    qv.query_variant_query_id,
+    p.plan_id AS variant_plan_id,
+    p.count_compiles,
+    p.last_execution_time
+FROM sys.query_store_query AS q
+JOIN sys.query_store_query_variant AS qv
+    ON qv.parent_query_id = q.query_id
+JOIN sys.query_store_plan AS p
+    ON p.query_id = qv.query_variant_query_id
+WHERE q.object_id = OBJECT_ID('dbo.usp_QS_Test_PostsByUser')
+ORDER BY qv.query_variant_query_id, p.plan_id;
+GO
+
 -- PSP variant plans (object_id = 0, text references the proc's ObjectID via PLAN PER VALUE)
 SELECT
     q.query_id,
